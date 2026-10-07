@@ -220,7 +220,7 @@
         inset 0 0 0 1px rgba(255,255,255,.02);
     }
 
-    /* === Фоновое видео внутри экрана === */
+    /* === YouTube-слот === */
     #yt-slot {
       position: absolute;
       inset: 0;
@@ -244,7 +244,6 @@
       border: 0;
     }
 
-    /* Обёртка, которую мы масштабируем через JS, чтобы видео "cover"-ило экран */
     #yt-slot .yt-frame-scaler {
       position: absolute;
       inset: 0;
@@ -252,6 +251,35 @@
       height: 100%;
       transform-origin: center center;
       will-change: transform;
+    }
+
+    /* === Twitch-слот === */
+    #twitch-slot {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      opacity: 0;
+      transition: opacity .8s ease;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #twitch-slot.active { opacity: 1; }
+
+    #twitch-slot .twitch-frame-scaler {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: center center;
+      will-change: transform;
+    }
+
+    #twitch-slot iframe {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      border: 0;
     }
 
     .screen-video-overlay {
@@ -266,7 +294,8 @@
         radial-gradient(circle at 30% 40%, rgba(0,0,0,.15), rgba(0,0,0,.55) 80%);
     }
 
-    #yt-slot.active ~ .screen-video-overlay { opacity: 1; }
+    #yt-slot.active ~ .screen-video-overlay,
+    #twitch-slot.active ~ .screen-video-overlay { opacity: 1; }
 
     @keyframes tvFlicker {
       0%, 100% { filter: brightness(1) contrast(1.02) saturate(1); }
@@ -275,7 +304,8 @@
       70% { filter: brightness(.99) contrast(1.05) saturate(.98); }
     }
 
-    #yt-slot.active {
+    #yt-slot.active,
+    #twitch-slot.active {
       opacity: 1;
       animation: tvFlicker 4.2s ease-in-out infinite;
     }
@@ -1065,12 +1095,20 @@
         <div class="screen-shell">
           <div class="screen tuning-3" id="tvScreen">
 
-            <!-- Фоновое видео внутри экрана -->
+            <!-- YouTube-слот -->
             <div id="yt-slot" aria-hidden="true">
               <div class="yt-frame-scaler">
                 <div id="yt-player"></div>
               </div>
             </div>
+
+            <!-- Twitch-слот -->
+            <div id="twitch-slot" aria-hidden="true">
+              <div class="twitch-frame-scaler">
+                <div id="twitch-player"></div>
+              </div>
+            </div>
+
             <div class="screen-video-overlay" aria-hidden="true"></div>
 
             <div class="tv-noise" aria-hidden="true"></div>
@@ -1271,7 +1309,7 @@
   <audio id="binaural" loop src="binaural.mp3" preload="auto"></audio>
   <audio id="morse" src="morse.mp3" preload="auto"></audio>
 
-  <!-- Скрипт ручек + видео (определяет onYouTubeIframeAPIReady) -->
+  <!-- Основной скрипт: ручки, YouTube, Twitch -->
   <script>
     (() => {
       const screen       = document.getElementById('tvScreen');
@@ -1282,20 +1320,35 @@
       const channelValue = document.getElementById('channelValue');
       const tuningValue  = document.getElementById('tuningValue');
 
-      // === Фоновое видео ===
-      const ytSlot        = document.getElementById('yt-slot');
-      const scaler        = ytSlot.querySelector('.yt-frame-scaler');
-      const YT_VIDEO_ID   = 'iHQCYBw5Z1g';
-      const YT_START_SEC  = 0;
-      const VIDEO_ASPECT  = 16 / 9;
+      /* =========================================================
+         НАСТРОЙКИ
+         ========================================================= */
 
+      // ЗАМЕНИ на свой домен GitHub Pages — без https://, без слэша в конце.
+      // Например: 'gospi404.github.io'
+      const TWITCH_PARENT = 'gospi404.github.io';
+
+      const TWITCH_CHANNEL = 'gospi404'; // ник канала на Twitch
+      const YT_VIDEO_ID    = 'iHQCYBw5Z1g';
+      const YT_START_SEC   = 0;
+      const VIDEO_ASPECT   = 16 / 9;
+
+      // Канал, на котором показывается YouTube
+      const YT_CHANNEL_NUMBER = '01';
+      // Канал, на котором показывается Twitch
+      const TWITCH_CHANNEL_NUMBER = '02';
+
+      /* =========================================================
+         YouTube
+         ========================================================= */
+      const ytSlot = document.getElementById('yt-slot');
+      const ytScaler = ytSlot.querySelector('.yt-frame-scaler');
       let ytPlayer     = null;
       let ytReady      = false;
       let ytShouldPlay = false;
 
-      // Масштабируем плеер так, чтобы видео «покрывало» экран (как object-fit: cover)
       function fitVideoToScreen() {
-        if (!scaler) return;
+        if (!ytScaler) return;
         const sw = ytSlot.clientWidth;
         const sh = ytSlot.clientHeight;
         if (!sw || !sh) return;
@@ -1303,13 +1356,11 @@
         const screenAspect = sw / sh;
         let scale;
         if (screenAspect < VIDEO_ASPECT) {
-          // Экран уже видео → видео вписывается по ширине, нужно дотянуть по высоте
           scale = (sh * VIDEO_ASPECT) / sw;
         } else {
-          // Экран шире видео → видео вписывается по высоте, нужно дотянуть по ширине
           scale = sw / (sh * VIDEO_ASPECT);
         }
-        scaler.style.transform = `scale(${scale})`;
+        ytScaler.style.transform = `scale(${scale})`;
       }
 
       window.addEventListener('resize', fitVideoToScreen);
@@ -1329,7 +1380,7 @@
             rel: 0,
             iv_load_policy: 3,
             playsinline: 1,
-            cc_load_policy: 0,   // субтитры выключены
+            cc_load_policy: 0,
             start: YT_START_SEC
           },
           events: {
@@ -1337,7 +1388,6 @@
               ytReady = true;
               e.target.mute();
 
-              // Жёстко выключаем субтитры (модуль подгружается не сразу)
               const killSubs = () => {
                 try { e.target.unloadModule('captions'); } catch (_) {}
                 try { e.target.unloadModule('cc'); } catch (_) {}
@@ -1348,7 +1398,6 @@
               setTimeout(killSubs, 1200);
               setTimeout(killSubs, 2500);
 
-              // Подгоняем масштаб под экран
               fitVideoToScreen();
               setTimeout(fitVideoToScreen, 300);
 
@@ -1367,26 +1416,85 @@
         });
       };
 
-      function setBackgroundVideo(active) {
-        ytShouldPlay = active;
+      /* =========================================================
+         Twitch
+         ========================================================= */
+      const twitchSlot   = document.getElementById('twitch-slot');
+      const twitchScaler = twitchSlot.querySelector('.twitch-frame-scaler');
+      let twitchIframe   = null;
 
+      function ensureTwitchPlayer() {
+        if (twitchIframe) return;
+
+        twitchIframe = document.createElement('iframe');
+        twitchIframe.src =
+          `https://player.twitch.tv/?channel=${encodeURIComponent(TWITCH_CHANNEL)}` +
+          `&parent=${encodeURIComponent(TWITCH_PARENT)}` +
+          `&autoplay=true` +
+          `&muted=true`;
+        twitchIframe.setAttribute('allowfullscreen', '');
+        twitchIframe.setAttribute('frameborder', '0');
+        twitchIframe.setAttribute('scrolling', 'no');
+        twitchIframe.setAttribute('allow', 'autoplay; fullscreen');
+
+        document.getElementById('twitch-player').appendChild(twitchIframe);
+      }
+
+      function fitTwitchToScreen() {
+        if (!twitchScaler) return;
+        const sw = twitchSlot.clientWidth;
+        const sh = twitchSlot.clientHeight;
+        if (!sw || !sh) return;
+
+        const screenAspect = sw / sh;
+        let scale;
+        if (screenAspect < VIDEO_ASPECT) {
+          scale = (sh * VIDEO_ASPECT) / sw;
+        } else {
+          scale = sw / (sh * VIDEO_ASPECT);
+        }
+        twitchScaler.style.transform = `scale(${scale})`;
+      }
+
+      window.addEventListener('resize', fitTwitchToScreen);
+
+      /* =========================================================
+         Управление «экраном»: YouTube / Twitch
+         ========================================================= */
+      function setBackgroundVideo(channelNumber) {
+        const isYouTube = channelNumber === YT_CHANNEL_NUMBER;
+        const isTwitch  = channelNumber === TWITCH_CHANNEL_NUMBER;
+
+        // --- YouTube ---
+        ytShouldPlay = isYouTube;
         if (!ytReady || !ytPlayer) {
-          ytSlot.classList.toggle('active', active);
-          return;
+          ytSlot.classList.toggle('active', isYouTube);
+        } else {
+          if (isYouTube) {
+            ytSlot.classList.add('active');
+            ytPlayer.mute();
+            ytPlayer.playVideo();
+            fitVideoToScreen();
+          } else {
+            ytSlot.classList.remove('active');
+            ytPlayer.pauseVideo();
+          }
         }
 
-        if (active) {
-          ytSlot.classList.add('active');
-          ytPlayer.mute();
-          ytPlayer.playVideo();
-          fitVideoToScreen();
+        // --- Twitch ---
+        if (isTwitch) {
+          ensureTwitchPlayer();
+          twitchSlot.classList.add('active');
+          fitTwitchToScreen();
+          setTimeout(fitTwitchToScreen, 300);
         } else {
-          ytSlot.classList.remove('active');
-          ytPlayer.pauseVideo();
+          twitchSlot.classList.remove('active');
         }
       }
 
-      // === Каналы ===
+      /* =========================================================
+         Каналы и ручки
+         ========================================================= */
       const channels = [
         { number: '01', label: 'YOUTUBE',   text: 'Видео, записи стримов и ролики.' },
         { number: '02', label: 'TWITCH',    text: 'Стримы, игры и разговоры вживую.' },
@@ -1398,7 +1506,7 @@
 
       const tuningNames = ['ЧИСТО', 'ЛЁГКИЙ ШУМ', 'ШУМ', 'ПОМЕХИ', 'ПЛОХОЙ СИГНАЛ'];
 
-      let channelIndex = 0;
+      let channelIndex = 0; // старт на 01 / YOUTUBE
       let tuningIndex  = 1;
 
       const minDeg = -120;
@@ -1418,7 +1526,7 @@
         badge.innerHTML = `<span class="signal-dot"></span> CH ${c.number} / ${c.label}`;
         text.textContent = c.text;
 
-        setBackgroundVideo(c.number === '01');
+        setBackgroundVideo(c.number);
 
         if (flash) {
           screen.classList.remove('channel-flash');
@@ -1480,8 +1588,10 @@
       setChannel(channelIndex, false);
       setTuning(tuningIndex);
 
-      // На случай, если #yt-slot ещё не имеет размеров при первом рендере
-      window.addEventListener('load', fitVideoToScreen);
+      window.addEventListener('load', () => {
+        fitVideoToScreen();
+        fitTwitchToScreen();
+      });
     })();
   </script>
 
