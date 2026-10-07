@@ -548,7 +548,6 @@
       min-height: 12px;
     }
 
-
     .tv-noise {
       position: absolute;
       inset: 0;
@@ -662,6 +661,49 @@
       border-color: rgba(56,215,209,.22);
       background: rgba(56,215,209,.055);
       color: #fff;
+    }
+
+    /* --- Кнопка вкл/выкл фонового звука --- */
+    .audio-toggle {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.065);
+      background: rgba(255,255,255,.025);
+      color: #cbd1dc;
+      font: 13px/1 inherit;
+      font-family: inherit;
+      cursor: pointer;
+      transition: .17s ease;
+    }
+
+    .audio-toggle:hover {
+      border-color: rgba(56,215,209,.22);
+      background: rgba(56,215,209,.055);
+      color: #fff;
+    }
+
+    .audio-toggle i { margin-right: 6px; }
+
+    .audio-toggle .audio-state {
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+      letter-spacing: .12em;
+      color: var(--cyan);
+      transition: color .17s ease;
+    }
+
+    .audio-toggle.muted .audio-state {
+      color: #6b7385;
+    }
+
+    .audio-toggle.muted i {
+      color: #6b7385;
     }
 
     .status-strip {
@@ -1110,6 +1152,12 @@
               </a>
             </div>
 
+            <!-- Кнопка вкл/выкл фонового звука -->
+            <button class="audio-toggle" id="binauralToggle" type="button" aria-label="Включить или выключить фоновый звук">
+              <span><i class="fa-solid fa-volume-high"></i> ФОН</span>
+              <span class="audio-state">ВКЛ</span>
+            </button>
+
             <div class="status-strip">
               <div class="status-left">
                 <span class="status-led"></span>
@@ -1217,6 +1265,11 @@
     </div>
   </footer>
 
+  <!-- ===== Аудио-элементы ===== -->
+  <audio id="binaural" loop src="binaural.mp3" preload="auto"></audio>
+  <audio id="morse" src="morse.mp3" preload="auto"></audio>
+
+  <!-- ===== Скрипт ручек ТВ (был у тебя, оставлен без изменений) ===== -->
   <script>
     (() => {
       const screen = document.getElementById('tvScreen');
@@ -1352,6 +1405,72 @@
 
       setChannel(channelIndex, false);
       setTuning(tuningIndex);
+    })();
+  </script>
+
+  <!-- ===== Скрипт фонового звука ===== -->
+  <script>
+    (() => {
+      const binaural = document.getElementById('binaural');
+      const morse    = document.getElementById('morse');
+      const toggle   = document.getElementById('binauralToggle');
+      const stateEl  = toggle.querySelector('.audio-state');
+
+      binaural.volume = 0.25;   // фон — тише
+      morse.volume    = 0.55;   // морзе — поверх
+
+      const MORSE_INTERVAL = 5 * 60 * 1000; // 5 минут
+
+      let started    = false;
+      let binauralOn = localStorage.getItem('binauralOn') !== 'false';
+
+      function updateUI() {
+        toggle.classList.toggle('muted', !binauralOn);
+        stateEl.textContent = binauralOn ? 'ВКЛ' : 'ВЫКЛ';
+      }
+
+      function playMorse() {
+        // если морзе ещё играет — не прерываем
+        if (!morse.paused) return;
+        morse.currentTime = 0;
+        morse.play().catch(() => {});
+      }
+
+      function startAll() {
+        if (started) return;
+        started = true;
+
+        if (binauralOn) {
+          binaural.play().catch(() => {});
+        }
+
+        playMorse();
+        setInterval(playMorse, MORSE_INTERVAL);
+
+        document.removeEventListener('click', startAll);
+        document.removeEventListener('touchstart', startAll);
+        document.removeEventListener('keydown', startAll);
+      }
+
+      // Запуск после первого действия пользователя (иначе браузер блокирует автоплей)
+      document.addEventListener('click', startAll);
+      document.addEventListener('touchstart', startAll);
+      document.addEventListener('keydown', startAll);
+
+      // Кнопка вкл/выкл бинаурального
+      toggle.addEventListener('click', () => {
+        binauralOn = !binauralOn;
+        localStorage.setItem('binauralOn', binauralOn);
+
+        if (binauralOn) {
+          if (started) binaural.play().catch(() => {});
+        } else {
+          binaural.pause();
+        }
+        updateUI();
+      });
+
+      updateUI();
     })();
   </script>
 
