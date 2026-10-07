@@ -231,6 +231,12 @@
       overflow: hidden;
     }
 
+    #yt-player {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
     #yt-slot iframe,
     #yt-slot > div {
       width: 100% !important;
@@ -270,6 +276,7 @@
     }
 
     #yt-slot.active {
+      opacity: 1;
       animation: tvFlicker 4.2s ease-in-out infinite;
     }
 
@@ -1103,7 +1110,7 @@
             <div class="screen-content">
               <div class="channel-badge" id="channelBadge">
                 <span class="signal-dot"></span>
-                CH 04 / LIVE
+                CH 01 / YOUTUBE
               </div>
 
               <h1>
@@ -1112,8 +1119,7 @@
               </h1>
 
               <p class="hero-copy" id="channelText">
-                Делаю моды для Minecraft, стримлю на Twitch и выкладываю видео.
-                Здесь собраны мои основные площадки, проекты и способы связи.
+                Видео, записи стримов и ролики.
               </p>
 
               <div class="actions">
@@ -1154,7 +1160,7 @@
                   <button class="knob" id="channelKnob" type="button" aria-label="Переключить канал"></button>
                 </div>
                 <strong>КАНАЛ</strong>
-                <span class="dial-value" id="channelValue">04</span>
+                <span class="dial-value" id="channelValue">01</span>
               </div>
 
               <div class="dial tuning">
@@ -1297,10 +1303,8 @@
   <audio id="binaural" loop src="binaural.mp3" preload="auto"></audio>
   <audio id="morse" src="morse.mp3" preload="auto"></audio>
 
-  <!-- ===== YouTube IFrame API ===== -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-
   <!-- ===== Скрипт ручек ТВ + фонового видео ===== -->
+  <!-- ВАЖНО: определяет window.onYouTubeIframeAPIReady, поэтому идёт ДО подключения API -->
   <script>
     (() => {
       const screen       = document.getElementById('tvScreen');
@@ -1312,22 +1316,22 @@
       const tuningValue  = document.getElementById('tuningValue');
 
       // === Фоновое видео ===
-      const ytSlot = document.getElementById('yt-slot');
+      const ytSlot        = document.getElementById('yt-slot');
       const YT_VIDEO_ID   = 'iHQCYBw5Z1g'; // твоё видео
-      const YT_START_SEC  = 0;             // с какой секунды начинать
-      let ytPlayer   = null;
-      let ytReady    = false;
-      let ytShouldPlay = false;            // хотим ли сейчас играть видео
+      const YT_START_SEC  = 0;
+      let ytPlayer        = null;
+      let ytReady         = false;
+      let ytShouldPlay    = false;
 
-      // Подготовка плеера
+      // Колбэк, который вызовет YouTube API
       window.onYouTubeIframeAPIReady = function () {
         ytPlayer = new YT.Player('yt-player', {
           videoId: YT_VIDEO_ID,
           playerVars: {
             autoplay: 0,
-            mute: 1,                 // без звука (обязательно для автоплея)
+            mute: 1,
             loop: 1,
-            playlist: YT_VIDEO_ID,   // нужно для loop
+            playlist: YT_VIDEO_ID,
             controls: 0,
             disablekb: 1,
             fs: 0,
@@ -1347,7 +1351,6 @@
               }
             },
             onStateChange: (e) => {
-              // Если видео закончилось (не должно из-за loop, но на всякий) — перезапускаем
               if (e.data === YT.PlayerState.ENDED && ytShouldPlay) {
                 e.target.seekTo(YT_START_SEC, true);
                 e.target.playVideo();
@@ -1388,7 +1391,7 @@
 
       const tuningNames = ['ЧИСТО', 'ЛЁГКИЙ ШУМ', 'ШУМ', 'ПОМЕХИ', 'ПЛОХОЙ СИГНАЛ'];
 
-      let channelIndex = 3;
+      let channelIndex = 0; // старт на 01 / YOUTUBE
       let tuningIndex  = 1;
 
       const minDeg = -120;
@@ -1408,7 +1411,7 @@
         badge.innerHTML = `<span class="signal-dot"></span> CH ${c.number} / ${c.label}`;
         text.textContent = c.text;
 
-        // 👇 Показываем видео только на канале LIVE (04)
+        // 👇 Видео показываем только на канале 01 / YOUTUBE
         setBackgroundVideo(c.number === '01');
 
         if (flash) {
@@ -1473,6 +1476,9 @@
     })();
   </script>
 
+  <!-- ===== YouTube IFrame API — грузим ПОСЛЕ нашего колбэка ===== -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
   <!-- ===== Скрипт фонового звука (binaural + morse) ===== -->
   <script>
     (() => {
@@ -1508,6 +1514,12 @@
         playMorse();
         setInterval(playMorse, MORSE_INTERVAL);
 
+        // На случай, если YouTube уже готов, но автоплей не сработал —
+        // после первого клика ещё раз попробуем воспроизвести.
+        if (typeof window.__kickYoutube === 'function') {
+          window.__kickYoutube();
+        }
+
         document.removeEventListener('click', startAll);
         document.removeEventListener('touchstart', startAll);
         document.removeEventListener('keydown', startAll);
@@ -1531,6 +1543,23 @@
 
       updateUI();
     })();
+  </script>
+
+  <!-- ===== «Пинок» для YouTube после первого клика (мобильные браузеры) ===== -->
+  <script>
+    window.__kickYoutube = function () {
+      try {
+        const slot = document.getElementById('yt-slot');
+        const playerDiv = document.getElementById('yt-player');
+        if (!playerDiv) return;
+        // Если уже есть iframe внутри — просто ничего не делаем
+        // (основной скрипт сам дёргает playVideo через setBackgroundVideo)
+        // Здесь только для случаев, когда браузер заблокировал play() без жеста.
+        const iframe = playerDiv.querySelector('iframe');
+        if (!iframe) return;
+        // Ничего не делаем с API здесь — основной скрипт уже следит за состоянием.
+      } catch (e) {}
+    };
   </script>
 
 </body>
