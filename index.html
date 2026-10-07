@@ -237,20 +237,21 @@
       display: block;
     }
 
-    #yt-slot iframe,
-    #yt-slot > div {
+    #yt-slot iframe {
       width: 100% !important;
       height: 100% !important;
       display: block;
       border: 0;
     }
 
-    /* Растягиваем плеер чуть шире, чтобы не было чёрных полос по краям */
+    /* Обёртка, которую мы масштабируем через JS, чтобы видео "cover"-ило экран */
     #yt-slot .yt-frame-scaler {
       position: absolute;
-      inset: -5%;
-      width: 110%;
-      height: 110%;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: center center;
+      will-change: transform;
     }
 
     .screen-video-overlay {
@@ -267,7 +268,6 @@
 
     #yt-slot.active ~ .screen-video-overlay { opacity: 1; }
 
-    /* Пульсация «телевизионного» света */
     @keyframes tvFlicker {
       0%, 100% { filter: brightness(1) contrast(1.02) saturate(1); }
       45% { filter: brightness(.97) contrast(1.04) saturate(.97); }
@@ -444,10 +444,7 @@
       gap: 18px;
     }
 
-    .profile {
-      text-align: center;
-      padding-bottom: 4px;
-    }
+    .profile { text-align: center; padding-bottom: 4px; }
 
     .avatar-ring {
       width: 132px;
@@ -634,22 +631,18 @@
       --noise-opacity: .00;
       filter: brightness(1.02) contrast(1.00) saturate(1.00);
     }
-
     .screen.tuning-2 {
       --noise-opacity: .025;
       filter: brightness(.99) contrast(1.02) saturate(.98);
     }
-
     .screen.tuning-3 {
       --noise-opacity: .06;
       filter: brightness(.97) contrast(1.05) saturate(.96);
     }
-
     .screen.tuning-4 {
       --noise-opacity: .14;
       filter: brightness(.93) contrast(1.10) saturate(.92);
     }
-
     .screen.tuning-5 {
       --noise-opacity: .28;
       filter: brightness(.88) contrast(1.18) saturate(.86);
@@ -688,9 +681,7 @@
       50% { transform: translateX(1px) skewX(.15deg); }
     }
 
-    .channel-flash {
-      animation: channelFlash .22s ease;
-    }
+    .channel-flash { animation: channelFlash .22s ease; }
 
     @keyframes channelFlash {
       0% { opacity: .35; filter: brightness(1.8); }
@@ -724,7 +715,6 @@
       color: #fff;
     }
 
-    /* --- Кнопка вкл/выкл фонового звука --- */
     .audio-toggle {
       width: 100%;
       min-height: 44px;
@@ -779,11 +769,7 @@
       text-transform: uppercase;
     }
 
-    .status-left {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
+    .status-left { display: flex; align-items: center; gap: 7px; }
 
     .status-led {
       width: 7px;
@@ -929,10 +915,7 @@
       font-size: 15px;
     }
 
-    .about-side {
-      display: grid;
-      gap: 14px;
-    }
+    .about-side { display: grid; gap: 14px; }
 
     .about-side article {
       min-height: 126px;
@@ -984,10 +967,7 @@
     .d2 { animation-delay: .12s; }
 
     @keyframes appear {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     @media (max-width: 980px) {
@@ -1000,9 +980,7 @@
       }
 
       .dial-row { align-self: stretch; }
-
       .social-grid { grid-template-columns: repeat(2, 1fr); }
-
       .about-grid { grid-template-columns: 1fr; }
     }
 
@@ -1016,18 +994,11 @@
 
       .nav { justify-content: flex-start; }
 
-      .nav a {
-        padding-left: 0;
-        padding-right: 15px;
-      }
+      .nav a { padding-left: 0; padding-right: 15px; }
 
       main { padding-top: 20px; }
 
-      .tv {
-        padding: 10px;
-        border-radius: 28px;
-      }
-
+      .tv { padding: 10px; border-radius: 28px; }
       .screen { border-radius: 22px; }
 
       .screen-content {
@@ -1036,7 +1007,6 @@
       }
 
       h1 { font-size: clamp(50px, 17vw, 76px); }
-
       .hero-copy { font-size: 16px; }
 
       .tv-controls { grid-template-columns: 1fr; }
@@ -1053,13 +1023,11 @@
       }
 
       .section-head p { justify-self: start; }
-
       .social-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 460px) {
       .wrap { width: min(var(--max), calc(100% - 20px)); }
-
       .button { width: 100%; }
 
       .screen-content {
@@ -1097,7 +1065,7 @@
         <div class="screen-shell">
           <div class="screen tuning-3" id="tvScreen">
 
-            <!-- === Фоновое видео внутри экрана === -->
+            <!-- Фоновое видео внутри экрана -->
             <div id="yt-slot" aria-hidden="true">
               <div class="yt-frame-scaler">
                 <div id="yt-player"></div>
@@ -1299,12 +1267,11 @@
     </div>
   </footer>
 
-  <!-- ===== Аудио-элементы ===== -->
+  <!-- Аудио -->
   <audio id="binaural" loop src="binaural.mp3" preload="auto"></audio>
   <audio id="morse" src="morse.mp3" preload="auto"></audio>
 
-  <!-- ===== Скрипт ручек ТВ + фонового видео ===== -->
-  <!-- ВАЖНО: определяет window.onYouTubeIframeAPIReady, поэтому идёт ДО подключения API -->
+  <!-- Скрипт ручек + видео (определяет onYouTubeIframeAPIReady) -->
   <script>
     (() => {
       const screen       = document.getElementById('tvScreen');
@@ -1317,13 +1284,36 @@
 
       // === Фоновое видео ===
       const ytSlot        = document.getElementById('yt-slot');
-      const YT_VIDEO_ID   = 'iHQCYBw5Z1g'; // твоё видео
+      const scaler        = ytSlot.querySelector('.yt-frame-scaler');
+      const YT_VIDEO_ID   = 'iHQCYBw5Z1g';
       const YT_START_SEC  = 0;
-      let ytPlayer        = null;
-      let ytReady         = false;
-      let ytShouldPlay    = false;
+      const VIDEO_ASPECT  = 16 / 9;
 
-      // Колбэк, который вызовет YouTube API
+      let ytPlayer     = null;
+      let ytReady      = false;
+      let ytShouldPlay = false;
+
+      // Масштабируем плеер так, чтобы видео «покрывало» экран (как object-fit: cover)
+      function fitVideoToScreen() {
+        if (!scaler) return;
+        const sw = ytSlot.clientWidth;
+        const sh = ytSlot.clientHeight;
+        if (!sw || !sh) return;
+
+        const screenAspect = sw / sh;
+        let scale;
+        if (screenAspect < VIDEO_ASPECT) {
+          // Экран уже видео → видео вписывается по ширине, нужно дотянуть по высоте
+          scale = (sh * VIDEO_ASPECT) / sw;
+        } else {
+          // Экран шире видео → видео вписывается по высоте, нужно дотянуть по ширине
+          scale = sw / (sh * VIDEO_ASPECT);
+        }
+        scaler.style.transform = `scale(${scale})`;
+      }
+
+      window.addEventListener('resize', fitVideoToScreen);
+
       window.onYouTubeIframeAPIReady = function () {
         ytPlayer = new YT.Player('yt-player', {
           videoId: YT_VIDEO_ID,
@@ -1339,12 +1329,29 @@
             rel: 0,
             iv_load_policy: 3,
             playsinline: 1,
+            cc_load_policy: 0,   // субтитры выключены
             start: YT_START_SEC
           },
           events: {
             onReady: (e) => {
               ytReady = true;
               e.target.mute();
+
+              // Жёстко выключаем субтитры (модуль подгружается не сразу)
+              const killSubs = () => {
+                try { e.target.unloadModule('captions'); } catch (_) {}
+                try { e.target.unloadModule('cc'); } catch (_) {}
+                try { e.target.setOption('captions', 'track', {}); } catch (_) {}
+              };
+              killSubs();
+              setTimeout(killSubs, 400);
+              setTimeout(killSubs, 1200);
+              setTimeout(killSubs, 2500);
+
+              // Подгоняем масштаб под экран
+              fitVideoToScreen();
+              setTimeout(fitVideoToScreen, 300);
+
               if (ytShouldPlay) {
                 e.target.playVideo();
                 ytSlot.classList.add('active');
@@ -1364,7 +1371,6 @@
         ytShouldPlay = active;
 
         if (!ytReady || !ytPlayer) {
-          // API ещё не загрузилось — просто покажем/скроем контейнер
           ytSlot.classList.toggle('active', active);
           return;
         }
@@ -1373,6 +1379,7 @@
           ytSlot.classList.add('active');
           ytPlayer.mute();
           ytPlayer.playVideo();
+          fitVideoToScreen();
         } else {
           ytSlot.classList.remove('active');
           ytPlayer.pauseVideo();
@@ -1391,7 +1398,7 @@
 
       const tuningNames = ['ЧИСТО', 'ЛЁГКИЙ ШУМ', 'ШУМ', 'ПОМЕХИ', 'ПЛОХОЙ СИГНАЛ'];
 
-      let channelIndex = 0; // старт на 01 / YOUTUBE
+      let channelIndex = 0;
       let tuningIndex  = 1;
 
       const minDeg = -120;
@@ -1411,7 +1418,6 @@
         badge.innerHTML = `<span class="signal-dot"></span> CH ${c.number} / ${c.label}`;
         text.textContent = c.text;
 
-        // 👇 Видео показываем только на канале 01 / YOUTUBE
         setBackgroundVideo(c.number === '01');
 
         if (flash) {
@@ -1473,13 +1479,16 @@
 
       setChannel(channelIndex, false);
       setTuning(tuningIndex);
+
+      // На случай, если #yt-slot ещё не имеет размеров при первом рендере
+      window.addEventListener('load', fitVideoToScreen);
     })();
   </script>
 
-  <!-- ===== YouTube IFrame API — грузим ПОСЛЕ нашего колбэка ===== -->
+  <!-- YouTube IFrame API — после определения колбэка -->
   <script src="https://www.youtube.com/iframe_api"></script>
 
-  <!-- ===== Скрипт фонового звука (binaural + morse) ===== -->
+  <!-- Фоновый звук -->
   <script>
     (() => {
       const binaural = document.getElementById('binaural');
@@ -1514,12 +1523,6 @@
         playMorse();
         setInterval(playMorse, MORSE_INTERVAL);
 
-        // На случай, если YouTube уже готов, но автоплей не сработал —
-        // после первого клика ещё раз попробуем воспроизвести.
-        if (typeof window.__kickYoutube === 'function') {
-          window.__kickYoutube();
-        }
-
         document.removeEventListener('click', startAll);
         document.removeEventListener('touchstart', startAll);
         document.removeEventListener('keydown', startAll);
@@ -1543,23 +1546,6 @@
 
       updateUI();
     })();
-  </script>
-
-  <!-- ===== «Пинок» для YouTube после первого клика (мобильные браузеры) ===== -->
-  <script>
-    window.__kickYoutube = function () {
-      try {
-        const slot = document.getElementById('yt-slot');
-        const playerDiv = document.getElementById('yt-player');
-        if (!playerDiv) return;
-        // Если уже есть iframe внутри — просто ничего не делаем
-        // (основной скрипт сам дёргает playVideo через setBackgroundVideo)
-        // Здесь только для случаев, когда браузер заблокировал play() без жеста.
-        const iframe = playerDiv.querySelector('iframe');
-        if (!iframe) return;
-        // Ничего не делаем с API здесь — основной скрипт уже следит за состоянием.
-      } catch (e) {}
-    };
   </script>
 
 </body>
